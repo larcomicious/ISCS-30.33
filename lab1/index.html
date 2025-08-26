@@ -30,6 +30,7 @@
       function generateClusterDiv(cluster) {
         cluster.forEach(cluster => {
           const div = document.createElement('div');
+          div.classList.add('cluster-container');
           const header = generateHeader(cluster.full_name, cluster.acronym);
           const acronym = document.createElement('span');
           acronym.textContent = `(${cluster.acronym})`.toUpperCase();
