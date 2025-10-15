@@ -5,10 +5,4 @@ export class SessionStorageAPI {
     static getItem(key) {
         return sessionStorage.getItem(key);
     }
-    static removeItem(key) {
-        sessionStorage.removeItem(key);
-    }
-    static clear() {
-        sessionStorage.clear();
-    }
 }
