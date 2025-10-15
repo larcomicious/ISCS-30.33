@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Dictionary App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f9f9f9;
+        }
+        .title {
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 2.5rem;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 32px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 8px;
+            font-size: 1rem;
+        }
+        button {
+            padding: 8px 16px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .word-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        .part-section {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            background: #fafafa;
+        }
+        .part-of-speech {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #2a5d9f;
+            margin-bottom: 8px;
+        }
+        .definition-list {
+            margin-bottom: 12px;
+        }
+        .def-item {
+            margin-left: 18px;
+            margin-bottom: 6px;
+        }
+        .synonyms, .antonyms {
+            margin-top: 8px;
+            font-style: italic;
+        }
+        .error-message {
+            color: #d32f2f;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">Dictionary</h1>
+    <div class="container">
+        <div class="search-bar">
+            <input type="text" id="wordInput" placeholder="Enter a word..." />
+            <button id="searchBtn">Search</button>
+        </div>
+        <div id="result"></div>
+    </div>
+    <script>
+        const searchBtn = document.getElementById('searchBtn');
+        const wordInput = document.getElementById('wordInput');
+        const resultDiv = document.getElementById('result');
+        let currentSearchToken = null;
+
+        // clear contents
+        function clearResult() {
+            resultDiv.innerHTML = '';
+        }
+
+        // create section for each part of speech of word
+        function createSection(part, definitions, synonyms, antonyms) {
+            const section = document.createElement('div');
+            section.className = 'part-section';
+
+            // separate by part of speech
+            const pos = document.createElement('div');
+            pos.className = 'part-of-speech';
+            pos.textContent = part;
+            section.appendChild(pos);
+
+            const defList = document.createElement('ul');
+            defList.className = 'definition-list';
+
+            // iterate through definitions
+            definitions.forEach(def => {
+                const li = document.createElement('li');
+                li.className = 'def-item';
+                li.textContent = def;
+                defList.appendChild(li);
+            });
+            section.appendChild(defList);
+
+            // button group for synonyms and antonyms
+            const btnGroup = document.createElement('div');
+            btnGroup.className = 'btn-group';
+            
+            // synonym buttons
+            const synBtn = document.createElement('button');
+            synBtn.textContent = 'Show Synonyms';
+            synBtn.onclick = function() {
+                synBtn.disabled = true;
+                // enable copy button after showing synonyms
+                copySynBtn.disabled = false;
+                const synDiv = document.createElement('div');
+                synDiv.className = 'synonyms';
+                if (synonyms.length > 0) {
+                    synDiv.textContent = 'Synonyms: ' + synonyms.join(', ');
+                } else {
+                    synDiv.textContent = 'No synonym available';
+                }
+                section.appendChild(synDiv);
+            };
+
+            // copy synonyms button
+            const copySynBtn = document.createElement('button');
+            copySynBtn.textContent = 'Copy Synonyms';
+            copySynBtn.disabled = true;
+            copySynBtn.onclick = function() {
+                if (synonyms.length > 0) {
+                    navigator.clipboard.writeText(synonyms.join(', '))
+                    .then(() => {
+                        copySynBtn.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copySynBtn.textContent = 'Copy Synonyms';
+                        }, 1200);
+                    })
+                    .catch(() => {
+                        copySynBtn.textContent = 'Copy failed';
+                        setTimeout(() => {
+                            copySynBtn.textContent = 'Copy Synonyms';
+                        }, 1200);
+                    })
+                    ;
+                } else {
+                    copySynBtn.textContent = 'No synonyms to copy';
+                    setTimeout(() => {
+                        copySynBtn.textContent = 'Copy Synonyms';
+                    }, 1200);
+                }
+            };
+
+            // antonym buttons
+            const antBtn = document.createElement('button');
+            antBtn.textContent = 'Show Antonyms';
+            antBtn.onclick = function() {
+                antBtn.disabled = true;
+                const antDiv = document.createElement('div');
+                antDiv.className = 'antonyms';
+                if (antonyms.length > 0) {
+                    antDiv.textContent = 'Antonyms: ' + antonyms.join(', ');
+                } else {
+                    antDiv.textContent = 'No antonym available';
+                }
+                section.appendChild(antDiv);
+            };
+
+            btnGroup.appendChild(synBtn);
+            btnGroup.appendChild(copySynBtn);
+            btnGroup.appendChild(antBtn);
+            section.appendChild(btnGroup);
+
+            return section;
+        }
+
+        async function fetchBooks(word, searchToken) {
+            console.log('Fetching books for', word);
+            // creating books section
+            const booksSection = document.createElement('div');
+            booksSection.style.marginTop = '32px';
+            const booksTitle = document.createElement('div');
+            booksTitle.className = 'word-title';
+            booksTitle.style.fontSize = '1.3rem';
+            booksTitle.textContent = `Books containing "${word}"`;
+            booksSection.appendChild(booksTitle);
+
+            const list = document.createElement('ul');
+            list.style.marginLeft = '18px';
+
+            try {
+                const res = await fetch(`https://gutendex.com/books/?search=${encodeURIComponent(word)}`);
+                const data = await res.json();
+                console.log(data);
+
+                if (data.results && data.results.length > 0) {
+                    // limit to 5 books
+                    data.results.slice(0, 10).forEach(book => {
+                        const li = document.createElement('li');
+                        li.textContent = book.title;
+                        list.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = 'No books found';
+                    list.appendChild(li);
+                }
+            } catch {
+                const li = document.createElement('li');
+                li.textContent = 'Error fetching books';
+                list.appendChild(li);
+            }
+
+            // check if this is the latest search
+            if (currentSearchToken !== searchToken) return;
+            booksSection.appendChild(list);
+            resultDiv.appendChild(booksSection);
+        }
+
+        async function fetchQuotes(searchToken) {
+            console.log('Fetching random quotes');
+            // creating quotes section 
+            const quotesSection = document.createElement('div');
+            quotesSection.style.marginTop = '24px';
+            const quotesTitle = document.createElement('div');
+            quotesTitle.className = 'word-title';
+            quotesTitle.style.fontSize = '1.3rem';
+            quotesTitle.textContent = `Random verses`;
+            quotesSection.appendChild(quotesTitle);
+
+            const list = document.createElement('ul');
+            list.style.marginLeft = '18px';
+
+            // fetch 5 random verses
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const res = await fetch(`https://bible-api.com/data/web/random`);
+                    const data = await res.json();
+                    console.log(data);
+
+                    if (data) {
+                        const li = document.createElement('li');
+                        li.textContent = `"${data.random_verse.text}" — ${data.random_verse.book} ${data.random_verse.chapter}:${data.random_verse.verse}`;
+                        list.appendChild(li);
+                    } else {
+                        const li = document.createElement('li');
+                        li.textContent = 'No verse found';
+                        list.appendChild(li);
+                    }
+                } catch {
+                    const li = document.createElement('li');
+                    li.textContent = 'Error fetching verse';
+                    list.appendChild(li);
+                }
+            }
+
+            // check if this is the latest search
+            if (currentSearchToken !== searchToken) return;
+            quotesSection.appendChild(list);
+            resultDiv.appendChild(quotesSection);
+        }
+
+        async function searchWord() {
+            clearResult();
+            const word = wordInput.value.trim();
+            if (!word) return;
+
+            // create a unique token for this search to avoid race conditions
+            const searchToken = Symbol('searchToken');
+            currentSearchToken = searchToken;
+
+            // save last searched word
+            sessionStorage.setItem('lastWord', word);
+
+            animateResultContainer();
+
+            const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`;
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+
+                data.forEach(entry => {
+                    // show the word
+                    const wordTitle = document.createElement('div');
+                    wordTitle.className = 'word-title';
+                    wordTitle.textContent = entry.word + (entry.phonetic ? ` (${entry.phonetic})` : '');
+                    resultDiv.appendChild(wordTitle);
+
+                    // group meanings by part of speech
+                    const posMap = {};
+                     entry.meanings.forEach(meaning => {
+                        const pos = meaning.partOfSpeech;
+                        if (!posMap[pos]) {
+                            posMap[pos] = { definitions: [], synonyms: [], antonyms: [] };
+                        }
+                        meaning.definitions.forEach(def => {
+                            posMap[pos].definitions.push(def.definition);
+                        });
+                        // merge synonyms/antonyms, avoid duplicates
+                        posMap[pos].synonyms.push(...(meaning.synonyms || []));
+                        posMap[pos].antonyms.push(...(meaning.antonyms || []));
+                    });
+
+                    // remove duplicatse
+                    for (const pos in posMap) {
+                        const syns = [...new Set(posMap[pos].synonyms)];
+                        const ants = [...new Set(posMap[pos].antonyms)];
+                        const section = createSection(pos, posMap[pos].definitions, syns, ants);
+                        resultDiv.appendChild(section);
+                        animateSection(section);
+                    }
+                }); 
+                
+                const feedbackDiv = document.createElement('div');
+                feedbackDiv.className = 'word-title';
+                feedbackDiv.style.fontSize = '1.1rem';
+                feedbackDiv.style.color = '#2a5d9f';
+                feedbackDiv.style.marginBottom = '16px';
+                feedbackDiv.id = 'feedback-section';
+                feedbackDiv.textContent = 'Fetching books and quotes...';
+                resultDiv.appendChild(feedbackDiv);
+                
+                // play music for 5 seconds
+                playMusic(5000); 
+
+                // fetch books and quotes after definitions
+                await Promise.all([fetchBooks(word, searchToken), fetchQuotes(searchToken)]);
+
+                // remove feedback section
+                const feedbackElem = document.getElementById('feedback-section');
+                if (feedbackElem) feedbackElem.remove();
+                
+            } catch (e) {
+                const errMsg = document.createElement('div');
+                errMsg.className = 'error-message';
+                errMsg.textContent = 'Word does not exist';
+                resultDiv.appendChild(errMsg);
+                animateSection(errMsg);
+            }
+        }
+
+        // play music for a certain duration
+        async function playMusic(timeout = 5000) {
+            let audioUrl = 'https://www.bensound.com/bensound-music/bensound-sunny.mp3';
+
+            const audio = new Audio(audioUrl);
+            audio.play();
+
+            setTimeout(() => {
+                audio.pause();
+                audio.currentTime = 0;
+            }, timeout);
+        }
+
+        // animation functions
+        function animateResultContainer() {
+            resultDiv.animate([
+                { transform: 'scale(0.95)', opacity: 0 },
+                { transform: 'scale(1)', opacity: 1 }
+            ], {
+                duration: 400,
+                easing: 'ease-out'
+            });
+        }
+
+        function animateSection(section) {
+            section.animate([
+                { transform: 'translateY(30px)', opacity: 0 },
+                { transform: 'translateY(0)', opacity: 1 }
+            ], {
+                duration: 500,
+                easing: 'ease-out'
+            });
+        }
+        
+        searchBtn.addEventListener('click', searchWord);
+        wordInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') searchWord();
+        });
+
+        // on page load, check for last searched word
+        window.addEventListener('DOMContentLoaded', () => {
+            const lastWord = sessionStorage.getItem('lastWord');
+            if (lastWord) {
+                wordInput.value = lastWord;
+                searchWord();
+            }
+        });
+
+    </script>
+</body>
+</html>
