@@ -1,9 +1,9 @@
 export class BooksAPI {
     static async fetchBooks(word, searchToken, currentSearchToken, resultDiv) {
-        // console.log('Fetching books for', word);
         // creating books section
         const booksSection = document.createElement('div');
         booksSection.style.marginTop = '32px';
+        
         const booksTitle = document.createElement('div');
         booksTitle.className = 'word-title';
         booksTitle.style.fontSize = '1.3rem';
@@ -14,9 +14,8 @@ export class BooksAPI {
         list.style.marginLeft = '18px';
 
         try {
-            const res = await fetch(`https://gutendex.com/books/?search=${encodeURIComponent(word)}`);
+            const res = await fetch(`/books/${encodeURIComponent(word)}`);
             const data = await res.json();
-            // console.log(data);
 
             if (data.results && data.results.length > 0) {
                 // limit to 5 books

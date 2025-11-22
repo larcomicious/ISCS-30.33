@@ -9,6 +9,7 @@ const PORT = 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = patb.dirname(__filename);
 
+// using files in /public folder
 app.use(express.static(patb.join(__dirname, 'public')));
 
 // route: / (serve index.html)
@@ -21,7 +22,7 @@ app.get("/dictionary/:word", async (req, res) => {
     const { word } = req.params;
 
     try {
-        const apiRes = await axious.get(
+        const apiRes = await axios.get(
             `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
         );
         res.json(apiRes.data); // return raw JSON
